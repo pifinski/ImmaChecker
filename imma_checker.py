@@ -8,6 +8,8 @@ try:
     from fuzzywuzzy import fuzz
     from datetime import datetime
     from dateutil import relativedelta
+    from pydrive2.auth import GoogleAuth
+    from pydrive2.drive import GoogleDrive
 except ImportError as e:
     print("[!] Pythonmodule konnten nicht importiert werden. Wurde 'pip install -r requirements.txt' ausgeführt?\n\tFehler: " + str(e))
     quit()
@@ -68,36 +70,90 @@ except Exception as e:
     print("[!] Eine Spalte in der Tabelle scheint in config.py falsch zu sein:\n\t" + str(e))
     quit()
 
-# Das Feld für den PDF-Upload hat das Format "YYY-MM-DD <filename> (<downloadurl>)".
-# Wir teilen das Feld in die einzelnen Bestandteile und
-# schreiben die Daten in unser CSV
-split = csv[config.imma_bescheinigung_spalte].str.split(
-    config.uploaded_imma_regex, regex=True, expand=True)
-csv["imma_upload_date"], csv["imma_filename"], csv["imma_download_url"] = split[1], split[2], split[3]
+# Wir schauen welcher Anbieter genutzt wurde (GoogleForms vs AirTable)
+# Je nachdem nutzen wir einen anderen Weg (Google etwas komplizierter, AirTable einfacher)
+# um an die PDF-Dateien zu kommen
+try:
+    if "google" in csv[config.imma_bescheinigung_spalte]:
+        anbieter = "Google"
+    elif "airtable" in csv[config.imma_bescheinigung_spalte]:
+        anbieter= "AirTable"
+except Exception as e:
+    print("[!] Es scheint als hättet ihr weder AirTable noch GoogleForms benutzt! \n\t" + str(e))
+    quit()
 
-# Jetzt speichern wir alle Immas
-downloaded_imma_paths = [None] * len(csv["imma_download_url"])
-for index, download_url in enumerate(csv["imma_download_url"]):
-    try:
-        # Der Pfad, in dem die Imma gespeichert wird ist effektiv nur der angegebene Ordner und der Zeilenindex im CSV
-        imma_file_path = config.imma_path + "/" + str(index) + ".pdf"
+if anbieter == "AirTable":
+    # Das Feld für den PDF-Upload hat das Format "YYY-MM-DD <filename> (<downloadurl>)".
+    # Wir teilen das Feld in die einzelnen Bestandteile und
+    # schreiben die Daten in unser CSV
+    split = csv[config.imma_bescheinigung_spalte].str.split(
+        config.uploaded_imma_regex, regex=True, expand=True)
+    csv["imma_upload_date"], csv["imma_filename"], csv["imma_download_url"] = split[1], split[2], split[3]
 
-        # Alles runterladen
-        if download_url is None:
+    # Jetzt speichern wir alle Immas
+    downloaded_imma_paths = [None] * len(csv["imma_download_url"])
+    for index, download_url in enumerate(csv["imma_download_url"]):
+        try:
+            # Der Pfad, in dem die Imma gespeichert wird ist effektiv nur der angegebene Ordner und der Zeilenindex im CSV
+            imma_file_path = config.imma_path + "/" + str(index) + ".pdf"
+
+            # Alles runterladen
+            if download_url is None:
+                print(
+                f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
+            r = requests.get(download_url)
+            with open(imma_file_path, 'wb') as f:
+                f.write(r.content)
+                downloaded_imma_paths[index] = imma_file_path
+
+        except Exception as e:
+            # Bei Fehlern wird der Name und der Fehler noch einmal gesondert ausgegeben
             print(
-            f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
-        r = requests.get(download_url)
-        with open(imma_file_path, 'wb') as f:
-            f.write(r.content)
+                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(e))
+
+    # Die Liste der runtergeladenen Immas wird gespeichert
+    csv["immatrikulations_pdf_location"] = downloaded_imma_paths
+
+elif anbieter == "Google":
+
+    # Wir brauchen die FileID um die Datei aus dem Drive herunterzuladen
+    # Das Feld hat die Struktur https://drive.google.com/open?id= <ID>
+    # Wir extrahieren die fileid und speichern diese in unsere CSV
+    split= csv[config.imma_bescheinigung_spalte].str.split("=", expand= True)
+    csv["imma_download_url"]= split[1]
+
+    # Google möchte, dass wir uns authetifizieren, dieses passiert nun hier
+    try:
+        gauth = GoogleAuth()
+        gauth.LocalWebserverAuth()
+        drive = GoogleDrive(gauth)
+    except FileNotFoundError as e:
+        print("[!] Es scheint als fehlt euch die credentials.json Datei, hier findet ihr eine Anleitung für die Erstellung dieser:\n\thttps://docs.iterative.ai/PyDrive2/quickstart/ "+ str(e))
+
+    # Jetzt speichern wir alle Immas
+    downloaded_imma_paths = [None] * len(csv["imma_download_url"])
+    for index, download_url in enumerate(csv["imma_download_url"]):
+        try:
+            # Der Pfad, in dem die Imma gespeichert wird ist effektiv nur der angegebene Ordner und der Zeilenindex im CSV
+            imma_file_path = config.imma_path + "/" + str(index) + ".pdf"
+
+            # Alles runterladen
+            if download_url is None:
+                print(
+                f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
+            
+            file = drive.CreateFile({'id': download_url})
+            file.GetContentFile(imma_file_path)
             downloaded_imma_paths[index] = imma_file_path
 
-    except Exception as e:
-        # Bei Fehlern wird der Name und der Fehler noch einmal gesondert ausgegeben
-        print(
-            f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(e))
+        except Exception as e:
+            # Bei Fehlern wird der Name und der Fehler noch einmal gesondert ausgegeben
+            print(
+                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(e))
+    
 
-# Die Liste der runtergeladenen Immas wird gespeichert
-csv["immatrikulations_pdf_location"] = downloaded_imma_paths
+    
+
 
 # Jetzt validieren wir alle PDFs
 validierungsergebnisse = []
