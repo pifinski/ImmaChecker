@@ -41,7 +41,7 @@ namen_regex = r"(?:Herr|Frau)\s+([A-zÀ-ú@0-9- üÜ]*),\s+(?:geboren|Matrikel-N
 # Ab hier kommen Sachen die nur verändert werden sollten,
 # wenn ihr wisst was ihr macht (oder neugierig seid)
 # Das Regex für den Airtable Imma Upload
-uploaded_imma_regex = "([0-9]{4}-[0-9]{2}-[0-9]{2})?\ ?([A-z0-9\.]*) \((http[s]:\/\/[A-z0-9_\-\.\/]*)\)"
+uploaded_imma_regex = "(.*) \((http[s].*)\)"
 
 # Das Format des Geburtsdatums in Airtable
 airtable_geburtstagsdatum_format = "%d/%m/%Y"
