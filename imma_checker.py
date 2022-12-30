@@ -255,6 +255,6 @@ erfolg = csv[csv["Gültig"]]
 fehler = csv[csv["Gültig"] != True]
 
 # Zum Schluss schreiben wir die Ergebnisse in den output-Pfad
-erfolg.to_excel(config.output_pfad + "/erfolg.xlsx", index=False)
-fehler.to_excel(config.output_pfad + "/fehler.xlsx", index=False)
-duplicates.to_excel(config.output_pfad + "/duplikate.xlsx", index=False)
+erfolg.to_excel(config.output_pfad + "/erfolg.xlsx", index=True)
+fehler.to_excel(config.output_pfad + "/fehler.xlsx", index=True)
+duplicates.to_excel(config.output_pfad + "/duplikate.xlsx", index=True)
