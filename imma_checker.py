@@ -74,7 +74,7 @@ except Exception as e:
 # schreiben die Daten in unser CSV
 split = csv[config.imma_bescheinigung_spalte].str.split(
     config.uploaded_imma_regex, regex=True, expand=True)
-csv["imma_upload_date"], csv["imma_filename"], csv["imma_download_url"] = split[1], split[2], split[3]
+csv["imma_filename"], csv["imma_download_url"] = split[1], split[2]
 
 # Jetzt speichern wir alle Immas
 downloaded_imma_paths = [None] * len(csv["imma_download_url"])
