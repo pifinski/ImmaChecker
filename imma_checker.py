@@ -62,8 +62,9 @@ try:
     csv[config.vorname_spalte]
     csv[config.nachname_spalte]
     csv[config.email_spalte]
-    csv[config.geburtsdatum_spalte]
-    csv[config.imma_bescheinigung_spalte]
+    if volljaehrigkeit_pruefen:
+    #csv[config.geburtsdatum_spalte]
+        csv[config.imma_bescheinigung_spalte]
 except Exception as e:
     print("[!] Eine Spalte in der Tabelle scheint in config.py falsch zu sein:\n\t" + str(e))
     quit()
@@ -110,15 +111,16 @@ for csv_zeile in csv.iloc:
     geburtsdatum_parsen_ok = False
     pdf_location = csv_zeile["immatrikulations_pdf_location"]
 
-    try:
-        parsed_geburtsdatum = datetime.strptime(csv_zeile[config.geburtsdatum_spalte], config.airtable_geburtstagsdatum_format)
-        geburtsdatum_str = parsed_geburtsdatum.strftime(config.geburtsdatum_format)
-        geburtsdatum_parsen_ok = True
-    except Exception as e:
-        print(
-            f"[!] Das Geburtsdatum konnte nicht geprüft werden. Wahrscheinlich steht im CSV kein Datum oder es ist im falschen Format:\n\tName: {name}\n\tDatei: {pdf_location}")
-        ist_gueltig = False
-        ablehnungsgrund.append("Geburtsdatum konnte nicht geprüft werden")
+    if volljaehrigkeit_pruefen:
+        try:
+            parsed_geburtsdatum = datetime.strptime(csv_zeile[config.geburtsdatum_spalte], config.airtable_geburtstagsdatum_format)
+            geburtsdatum_str = parsed_geburtsdatum.strftime(config.geburtsdatum_format)
+            geburtsdatum_parsen_ok = True
+        except Exception as e:
+            print(
+                f"[!] Das Geburtsdatum konnte nicht geprüft werden. Wahrscheinlich steht im CSV kein Datum oder es ist im falschen Format:\n\tName: {name}\n\tDatei: {pdf_location}")
+            ist_gueltig = False
+            ablehnungsgrund.append("Geburtsdatum konnte nicht geprüft werden")
 
     if pdf_location is None:
         # Wir haben kein PDF für diesen Eintrag
@@ -134,6 +136,8 @@ for csv_zeile in csv.iloc:
             for seite in imma_pdf:
                 seiten_inhalt = seite.get_text().split("\n")
                 pdf_inhalt.extend(seiten_inhalt)
+            pdf_inhalt= " ".join(pdf_inhalt)
+
     except Exception as e:
         print(
             f"[!] Beim Öffnen und Verarbeiten eines PDFs gab es einen Fehler:\n\tName: {name}\n\tDatei: {pdf_location}\n\t" + str(e))
@@ -154,9 +158,9 @@ for csv_zeile in csv.iloc:
 
     # Danach das Semester
     im_richtigen_semester = any([
-        semester in string
+        semester in pdf_inhalt
         for semester in config.semester
-        for string in pdf_inhalt
+        
     ])
     if not im_richtigen_semester:
         ist_gueltig = False
@@ -171,9 +175,9 @@ for csv_zeile in csv.iloc:
 
     # Den Studiengang
     im_richtigen_studiengang = any([
-        studiengang in string
+        studiengang in pdf_inhalt
         for studiengang in config.studiengaenge
-        for string in pdf_inhalt
+        
     ])
     if not im_richtigen_studiengang:
         ist_gueltig = False
@@ -195,10 +199,10 @@ for csv_zeile in csv.iloc:
 
     # Den Namen
     namens_kandidaten = []
-    for s in pdf_inhalt:
-        match_result = namen_regex_compiled.match(s)
-        if match_result is not None:
-            namens_kandidaten.append(match_result.group(1))
+    match_result = namen_regex_compiled.findall(pdf_inhalt)
+
+    if len(match_result) !=0:
+        namens_kandidaten.append(match_result[0])
 
     # Für den Namen berechnen wir die Levenstheindistanz, einen Wert zur Bestimmung des Abstandes
     # zweier Zeichenketten
@@ -209,12 +213,20 @@ for csv_zeile in csv.iloc:
         ist_gueltig = False
         ablehnungsgrund.append("Name nicht gefunden")
     
+
     # bester Namenskandidat
-    bester_name = sorted(levenshtein_ratios,key=lambda item: item[1], reverse=True)[0]
+    if any([lr > config.levensthein_cutoff for (k, lr) in levenshtein_ratios]):
+        bester_name = sorted(levenshtein_ratios,key=lambda item: item[1], reverse=True)
+    elif all([lr < config.levensthein_cutoff for (k, lr) in levenshtein_ratios]) and len(levenshtein_ratios) >0:
+        bester_name = sorted(levenshtein_ratios,key=lambda item: item[1], reverse=True)
+    else:    
+        bester_name= [('',0)]
+    
 
     # Das Ergebnis wird in eine Liste geschrieben, die später mit den anderen
     # Daten zusammengeführt wird
-    validierungsergebnisse.append((ist_gueltig, ablehnungsgrund, bester_name[0], bester_name[1]))
+    validierungsergebnisse.append((ist_gueltig, ablehnungsgrund, list(bester_name[0])[0], list(bester_name[0])[1]))
+
 
 # Hier wird die Validierung zusammengeführt
 csv["Gültig"] = [ist_gueltig for (
