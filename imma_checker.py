@@ -67,6 +67,7 @@ try:
     if volljaehrigkeit_pruefen:
         csv[config.geburtsdatum_spalte]
     csv[config.imma_bescheinigung_spalte]
+
 except Exception as e:
     print("[!] Eine Spalte in der Tabelle scheint in config.py falsch zu sein:\n\t" + str(e))
     quit()
@@ -95,6 +96,8 @@ if anbieter == "AirTable":
     split = csv[config.imma_bescheinigung_spalte].str.split(
     config.uploaded_imma_regex, regex=True, expand=True)
     csv["imma_filename"], csv["imma_download_url"] = split[1], split[2]
+
+
 
     # Jetzt speichern wir alle Immas
     downloaded_imma_paths = [None] * len(csv["imma_download_url"])
@@ -205,6 +208,7 @@ for csv_zeile in csv.iloc:
             pdf_inhalt= pdf_inhalt.replace('  ', ' ')
             
             
+
 
 
     except Exception as e:
