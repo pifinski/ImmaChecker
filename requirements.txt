@@ -5,3 +5,4 @@ PyMuPDF
 python-dateutil
 python-Levenshtein
 requests
+pydrive2
