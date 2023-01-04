@@ -54,7 +54,7 @@ if not os.path.isdir(config.output_pfad):
     print(f"[i] Ordner {config.output_pfad} erstellt.")
 
 try:
-    csv = pandas.read_csv(config.csv, delimiter=";")
+    csv = pandas.read_csv(config.csv)
 except Exception as e:
     print("[!] Beim Lesen der CSV-Datei ist ein Fehler aufgetreten:\n\t" + str(e))
     quit()
