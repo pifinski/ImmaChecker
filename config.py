@@ -7,6 +7,10 @@ imma_path = "Immatrikulationsbescheinigungen"
 # Der Ordner, in dem die Ergebnisse gespeichert werden sollen
 output_pfad = "output"
 
+#Anbieter: "AirTable oder "Google" bitte entfernt hier das # vor dem jeweilig gewählten Anbieter hier ist aittable ausgewählt
+anbieter = "AirTable"
+#anbieter = "Google"
+
 # Die Studiengänge, die mit auf die Medis dürfen, genau so wie sie in der Immatrikulationsbescheinigung stehen
 studiengaenge = ["Zahnmedizin", "Humanmedizin", "Medizin", "Molekularmedizin"]
 
