@@ -11,7 +11,9 @@ try:
     from pydrive2.auth import GoogleAuth
     from pydrive2.drive import GoogleDrive
 except ImportError as e:
-    print("[!] Pythonmodule konnten nicht importiert werden. Wurde 'pip install -r requirements.txt' ausgeführt?\n\tFehler: " + str(e))
+    print(
+        "[!] Pythonmodule konnten nicht importiert werden. Wurde 'pip install -r requirements.txt' ausgeführt?\n\tFehler: " + str(
+            e))
     quit()
 
 # Zuerst ändern wir den aktuellen Ausführungspfad in den Ordner,
@@ -37,9 +39,12 @@ else:
         parsed_medis_erster_tag = datetime.strptime(config.medis_erster_tag, '%d.%m.%Y')
         mindestgeburtstag_medis_volljaehrigkeit = parsed_medis_erster_tag - relativedelta.relativedelta(years=18)
         print(f"[i] Der erste Tag der Medis ist der {parsed_medis_erster_tag.strftime('%d.%m.%Y')}")
-        print(f"[i] Wer mit auf die Medis will muss spätestens am {mindestgeburtstag_medis_volljaehrigkeit.strftime('%d.%m.%Y')} geboren sein")
+        print(
+            f"[i] Wer mit auf die Medis will muss spätestens am {mindestgeburtstag_medis_volljaehrigkeit.strftime('%d.%m.%Y')} geboren sein")
     except Exception as e:
-        print(f"[!] Der erste Tag der Medis (config.py: medis_erster_tag) konnte nicht bestimmt werden. Das Datum sollte wie 08.06.2023 aussehen.\n\tFehler: "+str(e))
+        print(
+            f"[!] Der erste Tag der Medis (config.py: medis_erster_tag) konnte nicht bestimmt werden. Das Datum sollte wie 08.06.2023 aussehen.\n\tFehler: " + str(
+                e))
         quit()
 
 # Pfade überprüfen. Existiert das CSV?
@@ -75,29 +80,17 @@ except Exception as e:
 # Wir schauen welcher Anbieter genutzt wurde (GoogleForms vs AirTable)
 # Je nachdem nutzen wir einen anderen Weg (Google etwas komplizierter, AirTable einfacher)
 # um an die PDF-Dateien zu kommen
-anbieter= ""
-
-if "google" in str(csv[config.imma_bescheinigung_spalte]):
-    anbieter = "Google"
-    
-elif "airtable" in str(csv[config.imma_bescheinigung_spalte]):
-    anbieter= "AirTable"
-    
-else:
-    print("No anbieter")
-    quit()
+anbieter = config.anbieter
 
 
 if anbieter == "AirTable":
-    print( "[i] Ihr habt AirTable benutzt!")
+    print("[i] Ihr habt AirTable benutzt!")
     # Das Feld für den PDF-Upload hat das Format "YYY-MM-DD <filename> (<downloadurl>)".
     # Wir teilen das Feld in die einzelnen Bestandteile und
     # schreiben die Daten in unser CSV
     split = csv[config.imma_bescheinigung_spalte].str.split(
-    config.uploaded_imma_regex, regex=True, expand=True)
+        config.uploaded_imma_regex_airtable, regex=True, expand=True)
     csv["imma_filename"], csv["imma_download_url"] = split[1], split[2]
-
-
 
     # Jetzt speichern wir alle Immas
     downloaded_imma_paths = [None] * len(csv["imma_download_url"])
@@ -109,7 +102,7 @@ if anbieter == "AirTable":
             # Alles runterladen
             if download_url is None:
                 print(
-                f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
+                    f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
             r = requests.get(download_url)
             with open(imma_file_path, 'wb') as f:
                 f.write(r.content)
@@ -118,27 +111,28 @@ if anbieter == "AirTable":
         except Exception as e:
             # Bei Fehlern wird der Name und der Fehler noch einmal gesondert ausgegeben
             print(
-                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(e))
+                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(
+                    e))
 
     # Die Liste der runtergeladenen Immas wird gespeichert
     csv["immatrikulations_pdf_location"] = downloaded_imma_paths
 
 elif anbieter == "Google":
-    print( "[i] Ihr habt Google-Forms benutzt!")
+    print("[i] Ihr habt Google-Forms benutzt!")
     # Wir brauchen die FileID um die Datei aus dem Drive herunterzuladen
     # Das Feld hat die Struktur https://drive.google.com/open?id= <ID>
     # Wir extrahieren die fileid und speichern diese in unsere CSV
-    split= csv[config.imma_bescheinigung_spalte].str.split("=", expand= True)
-    csv["imma_download_url"]= split[2]
+    split = csv[config.imma_bescheinigung_spalte].str.split("=", expand=True)
+    csv["imma_download_url"] = split[2]
 
-    
     # Google möchte, dass wir uns authetifizieren, dieses passiert nun hier
     try:
         gauth = GoogleAuth()
         gauth.LocalWebserverAuth()
         drive = GoogleDrive(gauth)
-    except :
-        print("[!] Es scheint als fehlt euch die credentials.json Datei, hier findet ihr eine Anleitung für die Erstellung dieser:\n\thttps://docs.iterative.ai/PyDrive2/quickstart/ ")
+    except:
+        print(
+            "[!] Es scheint als fehlt euch die credentials.json Datei, hier findet ihr eine Anleitung für die Erstellung dieser:\n\thttps://docs.iterative.ai/PyDrive2/quickstart/ ")
 
     # Jetzt speichern wir alle Immas
     downloaded_imma_paths = [None] * len(csv["imma_download_url"])
@@ -150,8 +144,8 @@ elif anbieter == "Google":
             # Alles runterladen
             if download_url is None:
                 print(
-                f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
-            
+                    f"[!] Es konnte kein Downloadlink gefunden werden:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}")
+
             file = drive.CreateFile({'id': download_url})
             file.GetContentFile(imma_file_path)
             downloaded_imma_paths[index] = imma_file_path
@@ -159,14 +153,11 @@ elif anbieter == "Google":
         except Exception as e:
             # Bei Fehlern wird der Name und der Fehler noch einmal gesondert ausgegeben
             print(
-                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(e))
-    
+                f"[!] Beim Herunterladen einer Immatrikulationsbescheinigung ist ein Fehler aufgetreten:\n\tName: {csv.iloc[index][config.vorname_spalte]} {csv.iloc[index][config.nachname_spalte]}\n\tURL: {download_url}\n\t" + str(
+                    e))
+
     # Die Liste der runtergeladenen Immas wird gespeichert
     csv["immatrikulations_pdf_location"] = downloaded_imma_paths
-    
-
-    
-
 
 validierungsergebnisse = []
 
@@ -181,7 +172,8 @@ for csv_zeile in csv.iloc:
 
     if volljaehrigkeit_pruefen:
         try:
-            parsed_geburtsdatum = datetime.strptime(csv_zeile[config.geburtsdatum_spalte], config.airtable_geburtstagsdatum_format)
+            parsed_geburtsdatum = datetime.strptime(csv_zeile[config.geburtsdatum_spalte],
+                                                    config.airtable_geburtstagsdatum_format)
             geburtsdatum_str = parsed_geburtsdatum.strftime(config.geburtsdatum_format)
             geburtsdatum_parsen_ok = True
         except Exception as e:
@@ -204,16 +196,17 @@ for csv_zeile in csv.iloc:
             for seite in imma_pdf:
                 seiten_inhalt = seite.get_text().split("\n")
                 pdf_inhalt.extend(seiten_inhalt)
-            pdf_inhalt= " ".join(pdf_inhalt)
-            pdf_inhalt= pdf_inhalt.replace('  ', ' ')
-            
-            
+            pdf_inhalt = " ".join(pdf_inhalt)
+            pdf_inhalt = pdf_inhalt.replace('  ', ' ')
+
+
 
 
 
     except Exception as e:
         print(
-            f"[!] Beim Öffnen und Verarbeiten eines PDFs gab es einen Fehler:\n\tName: {name}\n\tDatei: {pdf_location}\n\t" + str(e))
+            f"[!] Beim Öffnen und Verarbeiten eines PDFs gab es einen Fehler:\n\tName: {name}\n\tDatei: {pdf_location}\n\t" + str(
+                e))
         ist_gueltig = False
         ablehnungsgrund.append("Das PDF konnte nicht geöffnet werden")
         validierungsergebnisse.append((ist_gueltig, ablehnungsgrund, "", 0))
@@ -233,7 +226,7 @@ for csv_zeile in csv.iloc:
     im_richtigen_semester = any([
         semester in pdf_inhalt
         for semester in config.semester
-        
+
     ])
     if not im_richtigen_semester:
         ist_gueltig = False
@@ -250,7 +243,7 @@ for csv_zeile in csv.iloc:
     im_richtigen_studiengang = any([
         studiengang in pdf_inhalt
         for studiengang in config.studiengaenge
-        
+
     ])
     if not im_richtigen_studiengang:
         ist_gueltig = False
@@ -274,7 +267,7 @@ for csv_zeile in csv.iloc:
     namens_kandidaten = []
     match_result = namen_regex_compiled.findall(pdf_inhalt)
 
-    if len(match_result) !=0:
+    if len(match_result) != 0:
         namens_kandidaten.append(match_result[0])
 
     # Für den Namen berechnen wir die Levenstheindistanz, einen Wert zur Bestimmung des Abstandes
@@ -285,31 +278,31 @@ for csv_zeile in csv.iloc:
     if all([lr < config.levensthein_cutoff for (k, lr) in levenshtein_ratios]):
         ist_gueltig = False
         ablehnungsgrund.append("Name nicht gefunden")
-    
 
     # bester Namenskandidat
     if any([lr > config.levensthein_cutoff for (k, lr) in levenshtein_ratios]):
-        bester_name = sorted(levenshtein_ratios,key=lambda item: item[1], reverse=True)
-    elif all([lr < config.levensthein_cutoff for (k, lr) in levenshtein_ratios]) and len(levenshtein_ratios) >0:
-        bester_name = sorted(levenshtein_ratios,key=lambda item: item[1], reverse=True)
-    else:    
-        bester_name= [('',0)]
-    
+        bester_name = sorted(levenshtein_ratios, key=lambda item: item[1], reverse=True)
+    elif all([lr < config.levensthein_cutoff for (k, lr) in levenshtein_ratios]) and len(levenshtein_ratios) > 0:
+        bester_name = sorted(levenshtein_ratios, key=lambda item: item[1], reverse=True)
+    else:
+        bester_name = [('', 0)]
 
     # Das Ergebnis wird in eine Liste geschrieben, die später mit den anderen
     # Daten zusammengeführt wird
     validierungsergebnisse.append((ist_gueltig, ablehnungsgrund, list(bester_name[0])[0], list(bester_name[0])[1]))
 
-
 # Hier wird die Validierung zusammengeführt
 csv["Gültig"] = [ist_gueltig for (
     ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in validierungsergebnisse]
 csv["Ablehnungsgrund"] = ["/".join(ablehnungsgrund)
-                          for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in validierungsergebnisse]
+                          for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in
+                          validierungsergebnisse]
 csv["bester Namenskandidat"] = [namenskandidat
-                          for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in validierungsergebnisse]
+                                for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in
+                                validierungsergebnisse]
 csv["Levenshteindistanz"] = [levensthein_distance
-                          for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in validierungsergebnisse]
+                             for (ist_gueltig, ablehnungsgrund, namenskandidat, levensthein_distance) in
+                             validierungsergebnisse]
 
 # Neuordnung der Spalten:
 csv.insert(0, config.vorname_spalte, csv.pop(config.vorname_spalte))
